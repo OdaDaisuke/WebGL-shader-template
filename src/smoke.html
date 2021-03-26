@@ -1,0 +1,153 @@
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <title>SMOKE</title>
+    <style>
+        body {
+            margin: 0px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r126/three.min.js"></script>
+    <script id="vertexShader" type="x-shader/x-vertex">
+        uniform float time;
+        uniform vec2 resolution;
+        void main()	{
+            gl_Position = vec4( position, 1.0 );
+        }
+    </script>
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        precision highp float;
+        uniform vec2 resolution;
+        uniform float time;
+        uniform vec2 mouse;
+        float random (in vec2 point) {
+            // http://www.matteo-basei.it/noise
+            return fract(100.0 * sin(point.x + fract(100.0 * sin(point.y))));
+        }
+
+        float noise (in vec2 st) {
+            vec2 i = floor(st);
+            vec2 f = fract(st);
+            float a = random(i);
+            float b = random(i + vec2(1., 0.));
+            float c = random(i + vec2(0., 1.));
+            float d = random(i + vec2(1., 1.));
+            vec2 u = f * f * (3. - 2. * f);
+            return mix(a, b, u.x) + (c - a)* u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+        }
+
+        #define octaves 10
+
+        float fbm (in vec2 p) {
+            float value = 0.;
+            float freq = 1.;
+            float amp = .5;
+
+            for (int i = 0; i < octaves; i++) {
+                value += amp * (noise((p - vec2(1.)) * freq));
+                freq *= 1.9;
+                amp *= .6;
+            }
+
+            return value;
+        }
+
+        float pattern(in vec2 p) {
+            vec2 offset = vec2(-.5);
+
+            vec2 aPos = vec2(sin(time * .005), sin(time * .01)) * 6.;
+            vec2 aScale = vec2(3.);
+            float a = fbm(p * aScale + aPos);
+
+            vec2 bPos = vec2(sin(time * .01), sin(time * .01)) * 1.;
+            vec2 bScale = vec2(.5);
+            float b = fbm((p + a) * bScale + bPos);
+
+            vec2 cPos = vec2(-.6, -.5) + vec2(sin(-time * .001), sin(time * .01)) * 2.;
+            vec2 cScale = vec2(2.);
+            float c = fbm((p + b) * cScale + cPos);
+
+            return c;
+        }
+
+        vec3 palette(in float t) {
+            // 輝度
+            vec3 a = vec3(.94, .94, .94);
+            // RGB exp
+            vec3 b = vec3(.45, .25, .19);
+            vec3 d = vec3(0.04, .02, 0.0);
+            float TAU = 6.28318;
+            return a + b * cos(TAU * (t + d));
+        }
+        void main() {
+            vec2 p = gl_FragCoord.xy / resolution.xy;
+            float e = sin(time * 0.1) * .2;
+            // 動くときの長さ
+            float rapidMovingDuration = 0.04;
+            // 動くときの速さ
+            float velocityE = 0.06;
+            // 動かない長さ
+            float offSpan = 0.72;
+            float ee = rapidMovingDuration / mod(time * 0.02, offSpan);
+            p.x = p.x + (ee * velocityE);
+            p.y = p.y + (ee * velocityE);
+            p.x *= resolution.x / resolution.y;
+            float value = pow(pattern(p), 2.);
+            vec3 color  = palette(value);
+
+            gl_FragColor = vec4(color, 1.);
+        }
+    </script>
+    <script>
+        var container;
+        var camera, scene, renderer;
+        var uniforms, material, mesh;
+        var mouseX = 0, mouseY = 0,
+            lat = 0, lon = 0, phy = 0, theta = 0;
+        var windowHalfX = window.innerWidth / 2;
+        var windowHalfY = window.innerHeight / 2;
+        init();
+        animate();
+        function init() {
+            container = document.getElementById('container');
+            camera = new THREE.Camera();
+            camera.position.z = 1;
+            scene = new THREE.Scene();
+            uniforms = {
+                time: { type: "f", value: 1.0 },
+                resolution: { type: "v2", value: new THREE.Vector2() }
+            };
+            material = new THREE.ShaderMaterial({
+                uniforms: uniforms,
+                vertexShader: document.getElementById('vertexShader').textContent,
+                fragmentShader: document.getElementById('fragmentShader').textContent
+            });
+            mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
+            scene.add(mesh);
+            renderer = new THREE.WebGLRenderer();
+            renderer.setPixelRatio(window.devicePixelRatio ? window.devicePixelRatio : 1);
+            container.appendChild(renderer.domElement);
+            uniforms.resolution.value.x = window.innerWidth;
+            uniforms.resolution.value.y = window.innerHeight;
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        function animate() {
+            requestAnimationFrame(animate);
+            render();
+        }
+        var startTime = Date.now();
+        function render() {
+            renderer.render(scene, camera);
+        }
+        const fps = 29.97;
+        setInterval(function () {
+            uniforms.time.value += 0.2;
+        }, fps);
+    </script>
+</body>
+</html>
