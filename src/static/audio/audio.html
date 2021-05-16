@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/109/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@200;300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <link rel="manifest" href="./manifest.json">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.3.0/simplex-noise.min.js"></script>
+    <script src="./radio.js"></script>
+    <title>[仮]Chillout Music Radio | SOON</title>
+    <style media="screen">
+      body {
+        background-color: #101010;
+        font-family: "Noto Sans JP";
+        margin: 0;
+        height: 100vh;
+        overflow: hidden;
+        padding: 0;
+      }
+      img {
+        vertical-align: middle;
+      }
+      canvas {
+        position: relative;
+        z-index: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="modal" class="modal">
+      <div id="modal_back" class="modal_back"></div>
+    </div>
+    <script type="x-shader/x-vertex" id="vertexShader">
+      varying vec3 vMvPosition;
+      void main() {
+        // ローカル座標 → 配置 → カメラ座標
+        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        // カメラ座標 → 画面座標
+        vec4 mvpPosition = projectionMatrix * mvPosition;
+        vMvPosition = mvPosition.xyz;
+        gl_PointSize = 8.0;
+        gl_Position = mvpPosition;
+      }
+    </script>
+    <script type="x-shader/x-fragment" id="fragmentShader">
+      precision mediump float;
+      varying vec3 vMvPosition;
+      void main() {
+        vec2 pointCoord = gl_PointCoord.st * 2.0 - 1.0;
+        float light = smoothstep(0.5, 1.0, 0.5 / length(pointCoord));
+        float depth = length(vMvPosition.z) - 42.5;
+        float alpha = smoothstep(-5.0, 0.0, depth) * 0.75 + 0.25;
+        gl_FragColor = vec4(vec3(1.0), light * alpha);
+      }
+    </script>
+  </body>
+</html>
