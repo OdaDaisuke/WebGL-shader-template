@@ -17,7 +17,7 @@ float random (in vec2 st) {
 
 float pattern(vec2 st, vec2 v, float t) {
     vec2 p = floor(st+v);
-    return step(t, random(100.+p*.00005)+random(p.x)*0.5 );
+    return step(t, random(100.+p*.005)+random(p.x)*0.5 );
 }
 
 void main() {
